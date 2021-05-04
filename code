@@ -1,0 +1,125 @@
+import pandas as pd 
+train_data=pd.read_csv(r'C:\Users\DELL\Downloads\archive\train.csv') 
+test_data=pd.read_csv(r'C:\Users\DELL\Downloads\archive\test.csv')
+train_data.head()
+test_data.head()
+
+
+#Loading the libraries for processing data
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
+from sklearn.feature_extraction.text TfidfTransformer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression,SGDClassifier
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report,confusion_matrix,accuracy_score
+from bs4 import BeautifulSoup
+import re
+import nltk
+from nltk.tokenize.toktok import ToktokTokenizer
+from nltk.tokenize import word_tokenize,sent_tokenize
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize,sent_tokenize
+import warnings
+warnings.filterwarnings('ignore')
+print(train_data.shape)
+print(test_data.shape)
+#split the dataset 
+#training dataset
+X_train=train_data.text.values
+Y_train=train_data.label.values
+#test dataset
+X_test=test_data.text.values
+Y_test=test_data.label.values
+print(X_train.shape,Y_train.shape)
+print(X_test.shape,Y_test.shape)
+print(len(X_test))
+print((Y_test))
+
+import nltk
+nltk.download('stopwords')
+#Tokenization of text
+tokenizer=ToktokTokenizer()
+#Setting English stopwords
+stopword_list=nltk.corpus.stopwords.words('english')
+
+#Removing the html strips
+def strip_html(text):
+    soup = BeautifulSoup(text, "html.parser")
+    return soup.get_text()
+
+#Removing the square brackets
+def remove_between_square_brackets(text):
+    return re.sub('\[[^]]*\]', '', text)
+# removing special characters
+def remove_special_characters(text, remove_digits=True):
+    pattern=r'[^a-zA-z0-9\s]'
+    text=re.sub(pattern,'',text)
+    return text
+
+#Removing the noisy text
+def denoise_text(text):
+    text = strip_html(text)
+    text = remove_between_square_brackets(text)
+    text =remove_special_characters(text)
+    return text
+#Apply function on review column
+train_data['text']=train_data['text'].apply(denoise_text)
+
+#Stemming the text
+def stemmer(text):
+    abc=nltk.porter.PorterStemmer()
+    text= ' '.join([abc.stem(word) for word in text.split()])
+    return text
+
+#Apply function on review column
+train_data['text']=train_data['text'].apply(stemmer)
+
+#Count vectorizer for bag of words
+count_v=CountVectorizer(min_df=0,max_df=1,binary=False,ngram_range=(1,3))
+#transformed train reviews
+count_v_train_reviews=count_v.fit_transform(X_train)
+#transformed test reviews
+count_v_test_reviews=count_v.transform(X_test)
+
+print('count of tokens in training data:',count_v_train_reviews.shape)
+print('count of tokens in test data:',count_v_test_reviews.shape)
+
+#Term Frequency-Inverse Document Frequency model (TFIDF)
+#It is used to convert text to matrix of tfidf features.
+tfidfv=TfidfVectorizer(min_df=0,max_df=1,use_idf=True,ngram_range=(1,3))
+#transformed train reviews
+tfidfv_train_reviews=tfidfv.fit_transform(X_train)
+#transformed test reviews
+tfidfv_test_reviews=tfidfv.transform(X_test)
+#print('Tfidf_train:',tfidfv_train_reviews)
+#print('Tfidf_test:',tfidfv_test_reviews)
+
+#Modelling the dataset
+#logistic regression
+#training the model
+lr=LogisticRegression(penalty='l2',max_iter=500,C=1,random_state=42)
+#Fitting the model for Bag of words
+lr=lr.fit(count_v_train_reviews,Y_train)
+print(lr)
+#Fitting the model for tfidf features
+lr_tfidf=lr.fit(tfidfv_train_reviews,Y_train)
+print(lr_tfidf)
+
+#Predicting the model for bag of words
+lr_predict=lr.predict(count_v_test_reviews)
+print(lr_predict)
+##Predicting the model for tfidf features
+lr_tfidf_predict=lr_tfidf.predict(tfidfv_test_reviews)
+print(lr_tfidf_predict)
+
+#Accuracy score for bag of words(bow)
+lr_bow_score=accuracy_score(Y_test,lr_predict)
+print("lr_bow_score :",lr_bow_score)
+#Accuracy score for tfidf features
+lr_tfidf_score=accuracy_score(Y_test,lr_tfidf_predict)
+print("lr_tfidf_score :",lr_tfidf_score)
